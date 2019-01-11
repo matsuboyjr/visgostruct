@@ -30,4 +30,5 @@ github.com/urfave/cli
 
 ## Installation
 
-    go get github.com/matsuboyjr/visgostruct
+    go build
+    go install
