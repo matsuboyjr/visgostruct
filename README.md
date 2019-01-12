@@ -2,7 +2,7 @@
 
 ## Overview
 
-Visualize relations of struct in golang by PlantUML.
+Visualize relations of structs in golang by PlantUML.
 
 ## Description
 
