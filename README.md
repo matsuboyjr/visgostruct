@@ -16,11 +16,13 @@ CLI tool to parse golang sources, then print definitions and relations of struct
     # include comments
     visgostruct -f -c ~/go/workspace/visgostruct/*.go
     # include tags
-    visgostruct -f -c -t ~/go/workspace/visgostruct/*.go
-    # comments and tags shown in note
-    visgostruct -f -c -n ~/go/workspace/visgostruct/*.go
+    visgostruct -f -t ~/go/workspace/visgostruct/*.go
+    # comments/tags shown in note
+    visgostruct -f -c -t -n ~/go/workspace/visgostruct/*.go
     # specify including or excluding struct's name with regexp
     visgostruct -i 'Information$' -e '^Field' ~/go/workspace/visgostruct/*.go
+    # specify root struct and extract its children, descendant
+    visgostruct -r 'StructInformation' -f -n ~/go/workspace/visgostruct/*.go
 
 ## Requirements
 

@@ -8,6 +8,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"log"
 	"os"
 	"regexp"
 	"strings"
@@ -71,7 +72,7 @@ func (i StructInformation) SprintClass(includeFields, enableComment, enableTag, 
 				uml += fmt.Sprintf(" %s", field.Comment)
 			}
 			if enableTag {
-				uml += fmt.Sprintf(" `%s", field.Tag)
+				uml += fmt.Sprintf(" `%s`", field.Tag)
 			}
 			uml += fmt.Sprintln()
 		}
@@ -83,10 +84,18 @@ func (i StructInformation) SprintClass(includeFields, enableComment, enableTag, 
 // SprintRelations returns string of relations in PlantUML format.
 func (i StructInformation) SprintRelations(classes map[string]*StructInformation) string {
 	var uml string
+	relations := map[string]int{}
 	for _, field := range i.Fileds {
 		_, ok := classes[field.HasA]
 		if ok {
-			uml += fmt.Sprintf("%s --* %s\n", field.HasA, i.Name)
+			relations[field.HasA]++
+		}
+	}
+	for relation, count := range relations {
+		if count > 1 {
+			uml += fmt.Sprintf("%s --* \"%d\" %s\n", relation, count, i.Name)
+		} else {
+			uml += fmt.Sprintf("%s --* %s\n", relation, i.Name)
 		}
 	}
 	return uml
@@ -124,9 +133,14 @@ func main() {
 			Name:  "note, n",
 			Usage: "comment and tag shown in note",
 		},
+		cli.StringFlag{
+			Name:  "root, r",
+			Usage: "extract recursively from specified struct(not implemented)",
+		},
 	}
 
 	app.Action = func(context *cli.Context) error {
+		// precompile regexp for include/exclude
 		var include, exclude *regexp.Regexp
 		if len(context.String("include")) > 0 {
 			include = regexp.MustCompile(context.String("include"))
@@ -134,26 +148,54 @@ func main() {
 		if len(context.String("exclude")) > 0 {
 			exclude = regexp.MustCompile(context.String("exclude"))
 		}
-		structs := []*StructInformation{}
+
+		// extract all structs found in sources
+		classes := map[string]*StructInformation{}
 		for _, arg := range context.Args() {
-			structs = append(structs, parseFile(arg)...)
+			structs := ParseFile(arg)
+			for _, info := range structs {
+				if exclude != nil && exclude.MatchString(info.Name) {
+					continue
+				}
+				if include != nil && !include.MatchString(info.Name) {
+					continue
+				}
+				classes[info.Name] = info
+			}
 		}
+
+		// collect root and descendent if "root" flag is given
+		if len(context.String("root")) > 0 {
+			info, ok := classes[context.String("root")]
+			if !ok {
+				log.Fatal(fmt.Errorf("root struct %s not found", context.String("root")))
+				os.Exit(1)
+			}
+			structs := []*StructInformation{info}
+			selected := map[string]*StructInformation{}
+			for len(structs) > 0 {
+				children := []*StructInformation{}
+				for _, info := range structs {
+					selected[info.Name] = info
+					for _, field := range info.Fileds {
+						child, ok := classes[field.HasA]
+						if ok {
+							children = append(children, child)
+						}
+					}
+				}
+				structs = children
+			}
+			classes = selected
+		}
+
+		// print PlantUML
 		fmt.Println("@startuml{}")
 		fmt.Println("left to right direction")
-		classes := map[string]*StructInformation{}
-		for _, info := range structs {
-			if exclude != nil && exclude.MatchString(info.Name) {
-				
-				continue
-			}
-			if include != nil && !include.MatchString(info.Name) {
-				continue
-			}
-
+		for _, info := range classes {
 			fmt.Print(info.SprintClass(context.Bool("fields"), context.Bool("comment"), context.Bool("tag"), context.Bool("note")))
-			classes[info.Name] = info
 		}
-		for _, info := range structs {
+		for _, info := range classes {
 			fmt.Print(info.SprintRelations(classes))
 		}
 		fmt.Println("@enduml")
@@ -162,7 +204,8 @@ func main() {
 	app.Run(os.Args)
 }
 
-func parseFile(path string) []*StructInformation {
+// ParseFile parse source file to extract structs
+func ParseFile(path string) []*StructInformation {
 	informations := []*StructInformation{}
 	fset := token.NewFileSet()
 	f, _ := parser.ParseFile(fset, path, nil, parser.ParseComments)
