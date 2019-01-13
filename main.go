@@ -8,6 +8,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io/ioutil"
 	"log"
 	"os"
 	"regexp"
@@ -176,6 +177,9 @@ func main() {
 			for len(structs) > 0 {
 				children := []*StructInformation{}
 				for _, info := range structs {
+					if _, ok := selected[info.Name]; ok {
+						continue
+					}
 					selected[info.Name] = info
 					for _, field := range info.Fileds {
 						child, ok := classes[field.HasA]
@@ -208,7 +212,8 @@ func main() {
 func ParseFile(path string) []*StructInformation {
 	informations := []*StructInformation{}
 	fset := token.NewFileSet()
-	f, _ := parser.ParseFile(fset, path, nil, parser.ParseComments)
+	source, _ := ioutil.ReadFile(path)
+	f, _ := parser.ParseFile(fset, path, source, parser.ParseComments)
 
 	ast.Inspect(f, func(n ast.Node) bool {
 		decl, ok := n.(*ast.GenDecl)
@@ -231,23 +236,19 @@ func ParseFile(path string) []*StructInformation {
 			information.Name = ts.Name.Name
 			information.Fileds = []*FieldInformation{}
 			for _, field := range st.Fields.List {
-				var tag string
-				if field.Tag != nil {
-					tag = field.Tag.Value
-				}
-				ft, ok := field.Type.(*ast.Ident)
-				if !ok {
-					continue
-				}
 				info := &FieldInformation{}
+				typeStart := fset.Position(field.Type.Pos()).Offset
+				typeEnd := fset.Position(field.Type.End()).Offset
+				info.Type = fmt.Sprintf("%s", source[typeStart:typeEnd])
+				info.HasA = strings.Trim(info.Type, "*[]")
+				if field.Tag != nil {
+					info.Tag = strings.Trim(field.Tag.Value, "`")
+				}
 				if len(field.Names) > 0 {
 					info.Name = field.Names[0].Name
 				} else {
-					info.Name = ft.Name
+					info.Name = info.Type
 				}
-				info.Type = ft.Name
-				info.HasA = strings.Trim(ft.Name, "*[]")
-				info.Tag = strings.Trim(tag, "`")
 				var commentString string
 				if field.Comment != nil {
 					for _, comment := range field.Comment.List {
