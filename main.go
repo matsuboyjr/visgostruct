@@ -17,6 +17,14 @@ import (
 	"github.com/urfave/cli"
 )
 
+func escapeCsv(s string) string {
+	return fmt.Sprintf("\"%s\"", strings.Replace(s, "\"", "\"\"", -1))
+}
+
+func escapeTsv(s string) string {
+	return strings.Replace(strings.Replace(s, "\n", " ", -1), "\t", " ", -1)
+}
+
 // FieldInformation is meta inforamtions of fields in struct.
 type FieldInformation struct {
 	Name    string
@@ -102,6 +110,28 @@ func (i StructInformation) SprintRelations(classes map[string]*StructInformation
 	return uml
 }
 
+// PrintCsv returns its definition in CSV.
+func (i StructInformation) PrintCsv() string {
+	csv := fmt.Sprintf("%s\n", escapeCsv(i.Name))
+	csv += "Name,Type,Tag,Comment\n"
+	for _, field := range i.Fileds {
+		csv += fmt.Sprintf("%s,%s,%s,%s\n",
+			escapeCsv(field.Name), escapeCsv(field.Type), escapeCsv(field.Tag), escapeCsv(field.Comment))
+	}
+	return csv
+}
+
+// PrintTsv returns its definition in TSV
+func (i StructInformation) PrintTsv() string {
+	tsv := fmt.Sprintln(i.Name)
+	tsv += "Name\tType\nTag\tComment\n"
+	for _, field := range i.Fileds {
+		tsv += fmt.Sprintf("%s\t%s\t%s\t%s\n",
+			escapeTsv(field.Name), escapeTsv(field.Type), escapeTsv(field.Tag), escapeTsv(field.Comment))
+	}
+	return tsv
+}
+
 func main() {
 	app := cli.NewApp()
 	app.Name = "visgostruct"
@@ -137,6 +167,14 @@ func main() {
 		cli.StringFlag{
 			Name:  "root, r",
 			Usage: "extract recursively from specified struct(not implemented)",
+		},
+		cli.BoolFlag{
+			Name:  "csv",
+			Usage: "print definitions as comma-separated values",
+		},
+		cli.BoolFlag{
+			Name:  "tsv",
+			Usage: "print definitions as tab-separated values",
 		},
 	}
 
@@ -193,16 +231,27 @@ func main() {
 			classes = selected
 		}
 
-		// print PlantUML
-		fmt.Println("@startuml{}")
-		fmt.Println("left to right direction")
-		for _, info := range classes {
-			fmt.Print(info.SprintClass(context.Bool("fields"), context.Bool("comment"), context.Bool("tag"), context.Bool("note")))
+		if context.Bool("csv") {
+			for _, info := range classes {
+				fmt.Println(info.PrintCsv())
+			}
+		} else if context.Bool("tsv") {
+			for _, info := range classes {
+				fmt.Println(info.PrintTsv())
+			}
+		} else {
+
+			// print PlantUML
+			fmt.Println("@startuml{}")
+			fmt.Println("left to right direction")
+			for _, info := range classes {
+				fmt.Print(info.SprintClass(context.Bool("fields"), context.Bool("comment"), context.Bool("tag"), context.Bool("note")))
+			}
+			for _, info := range classes {
+				fmt.Print(info.SprintRelations(classes))
+			}
+			fmt.Println("@enduml")
 		}
-		for _, info := range classes {
-			fmt.Print(info.SprintRelations(classes))
-		}
-		fmt.Println("@enduml")
 		return nil
 	}
 	app.Run(os.Args)

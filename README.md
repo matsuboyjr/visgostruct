@@ -23,6 +23,10 @@ CLI tool to parse golang sources, then print definitions and relations of struct
     visgostruct -i 'Information$' -e '^Field' ~/go/workspace/visgostruct/*.go
     # specify root struct and extract its children, descendant
     visgostruct -r 'StructInformation' -f -n ~/go/workspace/visgostruct/*.go
+    # print definitions as CSV
+    visgostruct -r 'StructInformation' -csv ~/go/workspace/visgostruct/*.go
+    # print definitions as TSV
+    visgostruct -r 'StructInformation' -tsv ~/go/workspace/visgostruct/*.go
 
 ## Requirements
 
