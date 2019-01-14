@@ -102,7 +102,7 @@ func (i StructInformation) SprintRelations(classes map[string]*StructInformation
 	}
 	for relation, count := range relations {
 		if count > 1 {
-			uml += fmt.Sprintf("%s --* \"%d\" %s\n", relation, count, i.Name)
+			uml += fmt.Sprintf("%s \"%d\" --* %s\n", relation, count, i.Name)
 		} else {
 			uml += fmt.Sprintf("%s --* %s\n", relation, i.Name)
 		}
