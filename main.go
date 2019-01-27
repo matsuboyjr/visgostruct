@@ -111,10 +111,18 @@ func (i StructInformation) SprintRelations(classes map[string]*StructInformation
 }
 
 // PrintCsv returns its definition in CSV.
-func (i StructInformation) PrintCsv() string {
-	csv := fmt.Sprintf("%s\n", escapeCsv(i.Name))
-	csv += "Name,Type,Tag,Comment\n"
+func (i StructInformation) PrintCsv(flattern bool) string {
+	var csv string
+	if flattern {
+		csv += "StructName,FieldName,Type,Tag,Comment\n"
+	} else {
+		csv += fmt.Sprintf("%s\n", escapeCsv(i.Name))
+		csv += "Name,Type,Tag,Comment\n"
+	}
 	for _, field := range i.Fileds {
+		if flattern {
+			csv += fmt.Sprintf("%s,", escapeCsv(i.Name))
+		}
 		csv += fmt.Sprintf("%s,%s,%s,%s\n",
 			escapeCsv(field.Name), escapeCsv(field.Type), escapeCsv(field.Tag), escapeCsv(field.Comment))
 	}
@@ -122,10 +130,18 @@ func (i StructInformation) PrintCsv() string {
 }
 
 // PrintTsv returns its definition in TSV
-func (i StructInformation) PrintTsv() string {
-	tsv := fmt.Sprintln(i.Name)
-	tsv += "Name\tType\nTag\tComment\n"
+func (i StructInformation) PrintTsv(flattern bool) string {
+	var tsv string
+	if flattern {
+		tsv += "StructName\tFieldName\tType\tTag\tComment\n"
+	} else {
+		tsv += fmt.Sprintln(i.Name)
+		tsv += "Name\tType\nTag\tComment\n"
+	}
 	for _, field := range i.Fileds {
+		if flattern {
+			tsv += fmt.Sprintf("%s\t", i.Name)
+		}
 		tsv += fmt.Sprintf("%s\t%s\t%s\t%s\n",
 			escapeTsv(field.Name), escapeTsv(field.Type), escapeTsv(field.Tag), escapeTsv(field.Comment))
 	}
@@ -175,6 +191,10 @@ func main() {
 		cli.BoolFlag{
 			Name:  "tsv",
 			Usage: "print definitions as tab-separated values",
+		},
+		cli.BoolFlag{
+			Name:  "flat",
+			Usage: "include name of struct on every fields for printing definitions",
 		},
 	}
 
@@ -233,14 +253,13 @@ func main() {
 
 		if context.Bool("csv") {
 			for _, info := range classes {
-				fmt.Println(info.PrintCsv())
+				fmt.Println(info.PrintCsv(context.Bool("flat")))
 			}
 		} else if context.Bool("tsv") {
 			for _, info := range classes {
-				fmt.Println(info.PrintTsv())
+				fmt.Println(info.PrintTsv(context.Bool("flat")))
 			}
 		} else {
-
 			// print PlantUML
 			fmt.Println("@startuml{}")
 			fmt.Println("left to right direction")

@@ -27,6 +27,8 @@ CLI tool to parse golang sources, then print definitions and relations of struct
     visgostruct -r 'StructInformation' -csv ~/go/workspace/visgostruct/*.go
     # print definitions as TSV
     visgostruct -r 'StructInformation' -tsv ~/go/workspace/visgostruct/*.go
+    # print definitions in flat style
+    visgostruct -r 'StructInformation' -csv ~/go/workspace/visgostruct/*.go
 
 ## Requirements
 
